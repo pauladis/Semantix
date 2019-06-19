@@ -1,33 +1,39 @@
 # Semantix
 
-Qual o objetivo do comando cache em Spark?
+##Qual o objetivo do comando cache em Spark?
 
-A maior parte das operações em um RDD são lazy, o que significa que, na prática, resultam apenas em uma abstração para um conjunto de instruções a serem executadas. Essas operações só são realmente executadas através de ações, que não são operações lazy, pois só podem ser avaliadas a partir da obtenção de valores do RDD. Isso pode, por exemplo, tornar códigos iterativos mais ineficientes, pois ações executadas repetidamente sobre um mesmo conjunto de dados disparam a ação de todas as operações lazy necessárias em cada uma das iterações, mesmo que resultados intermediários sejam iguais, como no caso da leitura de um arquivo. O uso do comando cache ajuda a melhorar a eficiência do código nesse tipo de cenário, pois permite que resultados intermediários de operações lazy possam ser armazenados e reutilizados repetidamente.
+Grande parte das operações de um RDD são apenas em uma abstração para um conjunto de instruções a serem realizadas, para essas operações nod damos o nome de lazy, estas operações só serão executadas após uma instrução de ação, que só podem ser validadas depois dos valores da RDD, com isso, alguns codigos iterativos se tornam ineficientes, pois um comando de ação encadeado irá disparar todas as operações lazy repetitivamente, para isto utilizamos o comando cache que permite que o resultado de operações lazy sejam armazenados e reutilizados
 
-O mesmo código implementado em Spark é normalmente mais rápido que a implementação equivalente em MapReduce. Por quê?
 
-Existem alguns fatores no desenho dessas ferramentas que tornam as aplicações desenvolvidas em MapReduce geralmente mais lentas que aquelas que utilizam Spark. Um desses fatores é o uso de memória. É comum a necessidade de rodar vários jobs MapReduce em sequência em vez de um único job. Ao usar MapReduce, o resultado de cada job é escrito em disco, e precisa ser lido novamente do disco quando passado ao job seguinte. Spark, por outro lado, permite que resultados intermediários sejam passados diretamente entre as operações a serem executadas através do caching desses dados em memória, ou até mesmo que diversas operações possam ser executadas sobre um mesmo conjunto de dados em cache, reduzindo a necessidade de escrita/leitura em disco. Adicionalmente, mesmo em cenários onde ocorre a execução de apenas um job, o uso de Spark tende a ter desempenho superior ao MapReduce. Isso ocorre porque jobs Spark podem ser iniciados mais rapidamente, pois para cada job MapReduce uma nova instância da JVM é iniciada, enquanto Spark mantém a JVM em constantemente em execução em cada nó, precisando apenas iniciar uma nova thread, que é um processo extremamente mais rápido.
+##O mesmo código implementado em Spark é normalmente mais rápido que a implementação equivalente em MapReduce. Por quê?
 
-Qual é a função do SparkContext ?
+Para cada execução do MapReduce é criado uma nova instancia do JVM alem do reultado ser escrito em disco, necessitando da leitura quando passado para um job seguinte, enquanto no Spark, a JVM está constantemente em execução e permite que os resultados sejam passados diretamente entre as proximas operações a serem executadas por meio do cache em memoria, oque possibilita que diversas operações seguintes utilizem um mesmo conjunto de dados em cache, não sendo necessario a escrita e leitura do mesmo
 
-O SparkContext funciona como um cliente do ambiente de execução Spark. Através dele, passam-se as configurações que vão ser utilizadas na alocação de recursos, como memória e processadores, pelos executors. Também usa-se o SparkContext para criar RDDs, colocar jobs em execução, criar variáveis de broadcast e acumuladores.
 
-Explique com suas palavras o que é Resilient Distributed Datasets (RDD)
+##Qual é a função do SparkContext ?
 
-RDDs são a principal abstração de dados do Spark. Eles são chamados Resilient por serem tolerantes à falha, isto é, são capazes de recomputar partes de dados perdidas devido a falhas nos nós e são Distributed porque podem estar divididos em partições através de diferentes nós em um cluster. Além dessas características, outras que podem ser destacadas são: RDDs são imutáveis, são objetos para leitura apenas, e só podem ser mudados através de transformações que resultam na criação de novos RDDs; Eles podem ser operados em paralelo, isto é, operações podem ser executadas sobre diferentes partições de um mesmo RDD ao mesmo tempo; RDDs são avaliados de forma "preguiçosa", de forma que os dados só ficam acessíveis e só são transformados quando alguma ação é executada (como mencionado na primeira questão); além disso RDDs têm seus valores categorizados em tipos, como números inteiros ou de ponto flutuante, strings, pares...
+SparkContext é um cliente do ambiente de execução do Spark, nele passamos alguns parametros de alocação de recursos, e atraves dele que criamos as nossas RDDs
 
-GroupByKey é menos eficiente que reduceByKey em grandes dataset. Por quê?
 
-Quando fazendo uma agregação utilizando reduceByKey, Spark sabe que pode realizar a operação passada como parâmetro em todos os elementos de mesma chave em cada partição para obter um resultado parcial antes de passar esses dados para os executores que vão calcular o resultado final, resultando em um conjunto menor de dados sendo transferido. Por outro lado, ao usar groupByKey e aplicar a agregação em seguida, o cálculo de resultados parciais não é realizado, dessa forma um volume muito maior de dados é desnecessariamente transferido através dos executores podendo, inclusive, ser maior que a quantidade de memória disponível para o mesmo, o que cria a necessidade de escrita dos dados em disco e resulta em um impacto negativo bastante significante na performance.
+##Explique com suas palavras o que é Resilient Distributed Datasets (RDD)
 
-** Explique o que o código Scala abaixo faz **
+RDDs são uma abstração dos dados em Spark, são tolerantes a falha, através da recomputação das partes afetadas em eventuais problemas em algum nó, devido ao fato de serem distribuidas atraves do cluster em quantas partes forem necessarias, e para cada fração da RDD em um nó, a mesma é replicada em outro nó, a fim de manter a integralidade, RDDs são imutaveis e são operados em paralelo sobre todas as partições
+
+
+##GroupByKey é menos eficiente que reduceByKey em grandes dataset. Por quê?
+
+Ao realizar uma agragação por reduceByKey, o Spark realiza a operação passada como parametro para todos os elementos com a mesma chave em cada partição, a fim de obter um resultado parcial que vai ser passado para o executor realizar o calculo final, já o groupByKey vai realizar a aplicação e agragação dos dados e passar esses dados para o executor, resultando num grande volume de dados a ser transferido
+
+
+##** Explique o que o código Scala abaixo faz **
 
 1. val textFile = sc . textFile ( "hdfs://..." )
 2. val counts = textFile . flatMap ( line => line . split ( " " ))
 3.           . map ( word => ( word , 1 ))
 4.           . reduceByKey ( _ + _ )
 5. counts . saveAsTextFile ( "hdfs://..." )
-Nesse código, um arquivo-texto é lido (linha 1). Em seguida, cada linha é "quebrada" em uma sequência de palavras e as sequencias correspondentes a cada linha são transformadas em uma única coleção de palavras (2). Cada palavra é então transformada em um mapeamente de chave-valor, com chave igual à própria palavra e valor 1 (3). Esses valores são agregados por chave, através da operação de soma (4). Por fim, o RDD com a contagem de cada palavra é salvo em um arquivo texto (5).
+
+primeiro lemos um arquivo de texto do hadoop, logo em seguida cada linha do arquivo passa por um split que separa o conteudo atraves de cada espaço em branco, então cada palavra é mapeada em um dicionario de key/value, sendo que a key é a propria palavra e seu value é 1, após isso os valores são agregados de acordo com a key somando seus valores, e tudo isto é armazenado na variavel counts, que no final é salvo em um arquivo de texto contendo a contagem de cada palavra
 
 
 
@@ -38,9 +44,12 @@ Dados:
 ● Aug 04 to Aug 31, ASCII format, 21.8MB gzip compressed, 167.8MB.
 Sobre o dataset: Esses dois conjuntos de dados possuem todas as requisições HTTP para o servidor da NASA Kennedy
 
-
 Questões
 Responda as seguintes questões devem ser desenvolvidas em Spark utilizando a sua linguagem de preferência.
+
+
+-- ambiente montando em uma maquina virtual com apenas 1 core do processador
+-- foi utilizado o anaconda 3.4 com python 3.6 em um contexto com hadoop 2.7 e spark 2.2.1
 
 
 from pyspark import SparkContext
@@ -58,15 +67,9 @@ dados_arquivo = dados_arquivo_aug.union(dados_arquivo_jul)
 ###1. Número de hosts únicos.
 
 hosts = set()
-for l in dados_arquivo_aug.collect():
+for l in dados_arquivo.collect():
     l = l.split(" ")
     hosts.add(l[0])
-
-
-for l in dados_arquivo_jul.collect():
-    l = l.split(" ")
-    hosts.add(l[0])
-
 print(len(hosts))
 137979
 
@@ -76,11 +79,11 @@ print(len(hosts))
 print(dados_arquivo.filter(lambda l: '404' in l[:-1]).count())
 28003
 
+
 ###3. Os 5 URLs que mais causaram erro 404.
 
 urls = {}
-
-for a in dados_arquivo_jul.collect():
+for a in dados_arquivo.collect():
     a = a.split(" ")
     if len(a) < 4:
         continue
@@ -89,27 +92,14 @@ for a in dados_arquivo_jul.collect():
             urls[a[-4]] = urls.get(a[-4]) + 1
         else:
             urls[a[-4]] = 1
-
-for a in dados_arquivo_aug.collect():
-    a = a.split(" ")
-    if len(a) < 4:
-        continue
-    if a[-2] == '404':
-        if a[-4] in urls.keys():
-            urls[a[-4]] = urls.get(a[-4]) + 1
-        else:
-            urls[a[-4]] = 1
-
 print(heapq.nlargest(5, urls, key=urls.get))
 ['/pub/winvn/readme.txt', '/pub/winvn/release.txt', '/shuttle/missions/STS-69/mission-STS-69.html', '/shuttle/missions/sts-68/ksc-upclose.gif', '/history/apollo/a-001/a-001-patch-small.gif']
-
 
 
 ###4. Quantidade de erros 404 por dia.
 
 notFoundByday = {}
-
-for a in dados_arquivo_jul.collect():
+for a in dados_arquivo.collect():
     a = a.split(" ")
     if len(a) < 4:
         continue
@@ -118,20 +108,7 @@ for a in dados_arquivo_jul.collect():
             notFoundByDay[a[3][1:12]] = notFoundByDay.get(a[3][1:12]) + 1
         else:
             notFoundByDay[a[3][1:12]] = 1
-
-for a in dados_arquivo_aug.collect():
-    a = a.split(" ")
-    if len(a) < 4:
-        continue
-    if a[-2] == '404':
-        if a[3][1:12] in notFoundByDay.keys():
-            notFoundByDay[a[3][1:12]] = notFoundByDay.get(a[3][1:12]) + 1
-        else:
-            notFoundByDay[a[3][1:12]] = 1
-
-
 print(notFoundByDay)
-
 {
     '01/Jul/1995': 316, 
     '02/Jul/1995': 291, 
@@ -197,16 +174,9 @@ print(notFoundByDay)
 ###5. O total de bytes retornados.
 
 total = 0
-
-for a in dados_arquivo_jul.collect():
+for a in dados_arquivo.collect():
     a = a.split(" ")
     if a[-1].isdigit():
         total += int(a[-1])
-        
-for a in dados_arquivo_aug.collect():
-    a = a.split(" ")
-    if a[-1].isdigit():
-        total += int(a[-1])
-        
 print(total)
 65524314915
