@@ -63,15 +63,20 @@ Responda as seguintes questões devem ser desenvolvidas em Spark utilizando a su
     dados_arquivo_jul = sc.textFile(path_jul)
     dados_arquivo_aug = sc.textFile(path_aug)
     dados_arquivo = dados_arquivo_aug.union(dados_arquivo_jul)
+    
+    separacao = lambda x : (x.split(" ")[0], x.split(" ")[3][1:12], x.split(" ")[6], x.split(" ")[8], x.split(" ")[9])
+    dados_arquivo = dados_arquivo.map(separacao)
 
 ###1. Número de hosts únicos.
-
-    hosts = set()
-        for l in dados_arquivo.collect():
-        l = l.split(" ")
-        hosts.add(l[0])
-    print(len(hosts))
-    #137979
+    
+    hosts = dados_arquivo.map(lambda x : x[0])
+    
+    #hosts = set()
+    #    for l in dados_arquivo.collect():
+    #    l = l.split(" ")
+    #    hosts.add(l[0])
+    #print(len(hosts))
+    ##137979
 
 
 ###2. O total de erros 404.
